@@ -1,0 +1,86 @@
+#!/usr/bin/env ruby
+require 'getoptlong'
+require 'brighter_planet_metadata'
+
+require 'carbonate'
+
+def help
+  puts <<-HELP
+usage: carbonate <source> <emitter> [options]'
+  <source> is a file path or URL pointing to a file supported by
+    RemoteTable (http://rubygems.org/gems/remote_table).
+  <emitter> is a one of the emitters provided by CM1. See the list at
+    http://impact.brighterplanet.com
+
+  Options specified map CM1 field names to fields in the file. For example,
+  if your file holding a list of flights has a field named "Origin" that maps
+  to the "origin_airport" field of CM1's flight emitter, you would run:
+
+      carbonate path/to/my_file.xls flight --origin_airport Origin
+
+  If you need to convert fields from one measurement unit to another, specify
+  an option like so:
+
+      carbonate path/to/my_file.xls shipment --weight "Weight (lbs)"
+        --weight-units pounds
+
+  RemoteTable imports fields as strings. If the field has numbers in it, the 
+  field is converted to a float then a string. To force a field type for data sent
+  to CM1, specify a -type option (the `to_<type>` method will be run) like so:
+
+      carbonate path/to/my_file.xls shipment --origin_zip_code "From"
+        --origin_zip_code-type i
+
+  HELP
+  exit
+end
+
+file_path = ARGV[0]
+unless file_path =~ /:\/\//
+  require 'uri'
+  file_path = 'file://' + URI.escape(File.expand_path(file_path, Dir.pwd))
+end
+
+Carbonate.emitter = ARGV[1]
+
+given_arguments = BrighterPlanet.metadata.options(Carbonate.emitter).inject([]) do |list, option|
+  list << ['--' + option, GetoptLong::OPTIONAL_ARGUMENT]
+  list << ['--' + option + '-units', GetoptLong::OPTIONAL_ARGUMENT]
+  list << ['--' + option + '-type', GetoptLong::OPTIONAL_ARGUMENT]
+end
+opts = GetoptLong.new *given_arguments
+
+opts.each do |option, value|
+  help if option == '--help' || option == '-h'
+
+  field = option.sub /^-+/, ''
+
+  if field =~ /-units$/
+    Carbonate.unit_map[field.sub(/-units$/,'')] = value
+  elsif field =~ /-type$/
+    Carbonate.type_map[field.sub(/-type$/,'')] = value
+  else
+    Carbonate.field_map[field] = value
+  end
+end
+
+help if ARGV.length != 2
+
+require 'carbon'
+require 'optparse'
+require 'remote_table'
+
+table = RemoteTable.new file_path
+
+list = []
+table.rows.each do |row|
+  list << Carbonate::Record.new(row)
+end
+
+Carbon.query(list).each do |record, impact|
+  record.carbon = impact.carbon
+  record.methodology = impact.methodology
+end
+
+require 'csv'
+puts ([(table.rows.first.keys + ['Carbon','Methodology']).to_csv] + list.map(&:to_csv)).join('')

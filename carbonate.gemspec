@@ -25,10 +25,14 @@ Gem::Specification.new do |s|
   s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
   s.require_paths = ['lib']
 
+  s.add_dependency 'alchemist'
+  s.add_dependency 'brighter_planet_metadata'
+  s.add_dependency 'carbon'
+  s.add_dependency 'remote_table'
+
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'bundler'
   s.add_development_dependency 'bueller'
   s.add_development_dependency 'rake'
-  s.add_development_dependency 'rcov'
 end
 
