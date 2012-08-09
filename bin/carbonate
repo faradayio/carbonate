@@ -77,10 +77,15 @@ table.rows.each do |row|
   list << Carbonate::Record.new(row)
 end
 
-Carbon.query(list).each do |record, impact|
-  record.carbon = impact.carbon
-  record.methodology = impact.methodology
+list.each do |record|
+  result = Carbon.query record
+  record.carbon = result.carbon
+  record.methodology = result.methodology
 end
+#Carbon.query(list).each do |record, impact|
+  #record.carbon = impact.carbon
+  #record.methodology = impact.methodology
+#end
 
 require 'csv'
 puts ([(table.rows.first.keys + ['Carbon','Methodology']).to_csv] + list.map(&:to_csv)).join('')
