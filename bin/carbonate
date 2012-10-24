@@ -43,7 +43,11 @@ end
 
 Carbonate.emitter = ARGV[1]
 
-given_arguments = BrighterPlanet.metadata.options(Carbonate.emitter).inject([]) do |list, option|
+emitter_options = BrighterPlanet.metadata.options(Carbonate.emitter)
+if Carbonate.emitter == 'lodging'
+  emitter_options << 'property'
+end
+given_arguments = emitter_options.inject([]) do |list, option|
   list << ['--' + option, GetoptLong::OPTIONAL_ARGUMENT]
   list << ['--' + option + '-units', GetoptLong::OPTIONAL_ARGUMENT]
   list << ['--' + option + '-type', GetoptLong::OPTIONAL_ARGUMENT]
